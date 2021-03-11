@@ -30,7 +30,7 @@ import h5py
 from pyxem.signals import LazyElectronDiffraction2D
 
 
-def load_mib(mib_path, reshape=True, flip=True):
+def load_mib(mib_path, reshape=True, scan_x=0, flip=True):
     """Read a .mib file or an h5 stack file using dask and return as a lazy pyXem / hyperspy signal.
 
     Parameters
@@ -40,6 +40,9 @@ def load_mib(mib_path, reshape=True, flip=True):
     reshape: boolean
         Keyword argument to control reshaping of the stack (default is True).
         It attempts to reshape using the flyback pixel.
+    scan_x: int
+        Keyword argument to manually set number of scan positions in x, for reshaping.
+        Useful for situations with no flyback pixels.
     flip: boolean
         Keyword argument to vertically flip the diffraction signal (default)
         or return unchanged. The metadata is updated accordingly.
@@ -111,6 +114,13 @@ def load_mib(mib_path, reshape=True, flip=True):
         data = _add_crosses(data)
 
     data_pxm = LazyElectronDiffraction2D(data)
+    
+    #Check if manual scan_x has been set.
+    if scan_x !=0:
+        data_dict["STEM_flag"] = 1
+        data_dict["scan_X"] = scan_x
+        data_dict["number of frames_to_skip"] = 0
+        data_dict["flyback_times"] = None
 
     # Transferring dict info to metadata
     if data_dict["STEM_flag"] == 1:
@@ -1077,7 +1087,7 @@ def reshape_4DSTEM_FlyBack(data):
 def reshape_4DSTEM_SumFrames(data):
     """
     Reshapes the lazy-imported stack of dimensions: (xxxxxx|Det_X, Det_Y) to the correct scan pattern
-    shape: (x, y | Det_X, Det_Y) when the frame exposure times are not in headre bits.
+    shape: (x, y | Det_X, Det_Y) when the frame exposure times are not in header bits.
     It utilises the over-exposed fly-back frame to identify the start of the lines in the first 20
     lines of frames, checks line length consistency and finds the number of frames to skip at the
     beginning (this number is printed out as string output).
